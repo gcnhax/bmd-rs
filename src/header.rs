@@ -1,6 +1,6 @@
 use byteorder::{ReadBytesExt, BE};
 use crate::error::Error;
-use std::io::{Read, Seek};
+use std::io::{Read, Seek, SeekFrom};
 
 enum FileType {
     BMD,
@@ -32,6 +32,9 @@ impl Header {
 
         let len = r.read_u32::<BE>()?;
         let n_sections = r.read_u32::<BE>()?;
+
+        // seek past padding
+        r.seek(SeekFrom::Current(0x0c))?;
 
         Ok(Header {
             ty,
