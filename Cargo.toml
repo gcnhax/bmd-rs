@@ -9,3 +9,4 @@ edition = '2018'
 [dependencies]
 byteorder = "1.2"
 quick-error = "1.2"
+indextree = "2.1"
