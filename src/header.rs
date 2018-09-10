@@ -2,12 +2,14 @@ use byteorder::{ReadBytesExt, BE};
 use crate::error::Error;
 use std::io::{Read, Seek, SeekFrom};
 
-enum FileType {
+#[derive(Debug)]
+pub enum FileType {
     BMD,
     BDL,
 }
 
-struct Header {
+#[derive(Debug)]
+pub struct Header {
     ty: FileType,
     len: u32,
     n_sections: u32,
