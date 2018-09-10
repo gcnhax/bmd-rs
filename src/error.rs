@@ -10,5 +10,8 @@ quick_error! {
         InvalidMagic {
             description("Invalid header magic")
         }
+
+        InvalidInfPacket {}
+        NodeHierarchyMismatch {}
     }
 }
