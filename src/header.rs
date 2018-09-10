@@ -33,6 +33,9 @@ impl Header {
         let len = r.read_u32::<BE>()?;
         let n_sections = r.read_u32::<BE>()?;
 
+        // seek past SVR3 tag
+        r.seek(SeekFrom::Current(0x4))?;
+
         // seek past padding
         r.seek(SeekFrom::Current(0x0c))?;
 
