@@ -67,7 +67,9 @@ impl Inf1 {
             return Err(Error::InvalidMagic);
         }
 
-        r.seek(SeekFrom::Current(0x10 - 0x4))?; // seek to start of data
+        let section_len = r.read_u32::<BE>()? as u64;
+
+        r.seek(SeekFrom::Current(0x8))?; // seek to start of data
 
         let _vert_count = r.read_u32::<BE>()?;
         let hierarchy_offset = r.read_u32::<BE>()?;
@@ -113,6 +115,8 @@ impl Inf1 {
                 }
             }
         }
+
+        r.seek(SeekFrom::Start(section_begin_offset + section_len));
 
         let scene_graph = SceneGraph {
             arena,
