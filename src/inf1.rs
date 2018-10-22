@@ -116,7 +116,7 @@ impl Inf1 {
             }
         }
 
-        r.seek(SeekFrom::Start(section_begin_offset + section_len));
+        r.seek(SeekFrom::Start(section_begin_offset + section_len))?;
 
         let scene_graph = SceneGraph {
             arena,
