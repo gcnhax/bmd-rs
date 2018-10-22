@@ -8,3 +8,5 @@ edition = '2018'
 byteorder = "1.2"
 quick-error = "1.2"
 indextree = "2.1"
+num-derive = "0.2"
+num-traits = "0.2"

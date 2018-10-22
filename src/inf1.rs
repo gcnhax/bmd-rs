@@ -2,11 +2,11 @@ use byteorder::{ReadBytesExt, BE};
 use crate::error::Error;
 use crate::util::SeekExt;
 use indextree::{Arena, NodeId};
-use std::convert::TryFrom;
 use std::io::{Read, Seek, SeekFrom};
+use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::FromPrimitive;
 
-#[repr(u16)]
-#[derive(Debug)]
+#[derive(Debug, FromPrimitive, ToPrimitive)]
 enum GraphStreamTag {
     End = 0x00,
     Open = 0x01,
@@ -14,21 +14,6 @@ enum GraphStreamTag {
     Joint = 0x10,
     Material = 0x11,
     Shape = 0x12,
-}
-
-impl TryFrom<u16> for GraphStreamTag {
-    type Error = Error;
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        Ok(match value {
-            0x00 => GraphStreamTag::End,
-            0x01 => GraphStreamTag::Open,
-            0x02 => GraphStreamTag::Close,
-            0x10 => GraphStreamTag::Joint,
-            0x11 => GraphStreamTag::Material,
-            0x12 => GraphStreamTag::Shape,
-            _ => return Err(Error::InvalidInfPacket),
-        })
-    }
 }
 
 #[derive(Debug)]
@@ -83,7 +68,7 @@ impl Inf1 {
         let mut last_node: Option<NodeId> = None;
         let mut parent_stack: Vec<NodeId> = vec![root];
         loop {
-            let tag = GraphStreamTag::try_from(r.read_u16::<BE>()?)?;
+            let tag = GraphStreamTag::from_u16(r.read_u16::<BE>()?).ok_or(Error::InvalidInfPacket)?;
             let index = r.read_u16::<BE>()?;
 
             match tag {
