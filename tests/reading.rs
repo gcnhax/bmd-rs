@@ -27,4 +27,6 @@ fn smoketest() {
     let evp1 = bmd::Evp1::parse(&mut file).unwrap();
     let drw1 = bmd::Drw1::parse(&mut file).unwrap();
     let jnt1 = bmd::Jnt1::parse(&mut file).unwrap();
+
+    let shp1 = bmd::Shp1::parse(&mut file).unwrap();
 }
