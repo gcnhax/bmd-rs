@@ -1,74 +1,93 @@
 use byteorder::{ReadBytesExt, BE};
 use crate::error::Error;
+use crate::gx::{VertexArrayType, VertexColorDataType, VertexDataType, VertexScalarDataType};
 use crate::util::SeekExt;
-use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
+use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 
-#[derive(Debug, PartialEq, Eq, FromPrimitive)]
-pub enum VertexArrayType {
-    PositionMatrixIndex = 0,
-    Tex0MatrixIndex = 1,
-    Tex1MatrixIndex = 2,
-    Tex2MatrixIndex = 3,
-    Tex3MatrixIndex = 4,
-    Tex4MatrixIndex = 5,
-    Tex5MatrixIndex = 6,
-    Tex6MatrixIndex = 7,
-    Tex7MatrixIndex = 8,
-    Position = 9,
-    Normal = 10,
-    Color0 = 11,
-    Color1 = 12,
-    Tex0 = 13,
-    Tex1 = 14,
-    Tex2 = 15,
-    Tex3 = 16,
-    Tex4 = 17,
-    Tex5 = 18,
-    Tex6 = 19,
-    Tex7 = 20,
-    PositionMatrixArray = 21,
-    NormalMatrixArray = 22,
-    TextureMatrixArray = 23,
-    LitMatrixArray = 24,
-    NormalBinormalTangent = 25,
-    NullAttr = 0xff,
+impl VertexArrayType {
+    /// Data tables are stored in a fixed order based on their type; this function returns
+    /// the index of the data table for a given vertex array type.
+    fn data_index(&self) -> Option<usize> {
+        match self {
+            VertexArrayType::Position => Some(0),
+            VertexArrayType::Normal => Some(1),
+            VertexArrayType::NormalBinormalTangent => Some(2),
+            VertexArrayType::Color0 => Some(3),
+            VertexArrayType::Color1 => Some(4),
+            VertexArrayType::Tex0 => Some(5),
+            VertexArrayType::Tex1 => Some(6),
+            VertexArrayType::Tex2 => Some(7),
+            VertexArrayType::Tex3 => Some(8),
+            VertexArrayType::Tex4 => Some(9),
+            VertexArrayType::Tex5 => Some(10),
+            VertexArrayType::Tex6 => Some(11),
+            VertexArrayType::Tex7 => Some(12),
+            _ => None,
+        }
+    }
+
+    fn parse_data_type(&self, dtype: u32) -> VertexDataType {
+        // TODO: Result<T, E>.
+        match self {
+            VertexArrayType::Position
+            | VertexArrayType::Normal
+            | VertexArrayType::NormalBinormalTangent => {
+                VertexDataType::Scalar(VertexScalarDataType::from_u32(dtype).unwrap())
+            }
+            VertexArrayType::Color0
+            | VertexArrayType::Color1
+            | VertexArrayType::Tex0
+            | VertexArrayType::Tex1
+            | VertexArrayType::Tex2
+            | VertexArrayType::Tex3
+            | VertexArrayType::Tex4
+            | VertexArrayType::Tex5
+            | VertexArrayType::Tex6
+            | VertexArrayType::Tex7 => {
+                VertexDataType::Color(VertexColorDataType::from_u32(dtype).unwrap())
+            }
+            // Everything else shouldn't get serialized into BMD files
+            _ => panic!("TODO: error here!"),
+        }
+    }
 }
 
-#[derive(Debug, FromPrimitive)]
-pub enum VertexScalarDataType {
-    Unsigned8 = 0x0,
-    Signed8 = 0x1,
-    Unsigned16 = 0x2,
-    Signed16 = 0x3,
-    Float32 = 0x4,
-}
-
-#[derive(Debug, FromPrimitive)]
-pub enum VertexColorDataType {
-    RGB565 = 0x0,
-    RGB8 = 0x1,
-    RGBX8 = 0x2,
-    RGBA4 = 0x3,
-    RGBA6 = 0x4,
-    RGBA8 = 0x5,
-}
-
-#[derive(Debug)]
-pub enum VertexDataType {
-    Scalar(VertexScalarDataType),
-    Color(VertexColorDataType),
-}
-
-#[derive(Debug)]
-struct VertexFormat {
-    vertex_ty: VertexArrayType,
-    data_ty: VertexDataType,
+#[derive(Debug, Copy, Clone)]
+pub struct VertexFormat {
+    pub ty: VertexArrayType,
+    pub data_ty: VertexDataType,
+    pub component_count: u32,
+    pub fixpoint_mantissa_bits: u8,
 }
 
 #[derive(Debug)]
-pub struct Vtx1 {}
+pub struct VertexArray {
+    pub format: VertexFormat,
+    pub raw_data: Vec<u8>,
+}
+
+pub enum VertexData {
+    Unsigned8(Vec<u8>),
+    Signed8(Vec<i8>),
+    Unsigned16(Vec<u16>),
+    Signed16(Vec<u16>),
+    Float32(Vec<f32>),
+
+    RGB565(Vec<u8>),
+    RGB8(Vec<u8>),
+    RGBX8(Vec<u8>),
+    RGBA4(Vec<u8>),
+    RGBA6(Vec<u8>),
+    RGBA8(Vec<u8>),
+}
+
+/// Vertex data of the model.
+#[derive(Debug)]
+pub struct Vtx1 {
+    pub arrays: HashMap<VertexArrayType, VertexArray>,
+}
 
 impl Vtx1 {
     pub fn parse<R>(r: &mut R) -> Result<Vtx1, Error>
@@ -96,59 +115,62 @@ impl Vtx1 {
             section_begin_offset + vertex_formats_offset as u64,
         ))?;
 
+        let mut vertex_formats = Vec::new();
         loop {
-            let vertex_ty = VertexArrayType::from_u32(r.read_u32::<BE>()?).unwrap();
-            if vertex_ty == VertexArrayType::NullAttr {
+            let ty = VertexArrayType::from_u32(r.read_u32::<BE>()?).unwrap();
+            if ty == VertexArrayType::NullAttr {
                 break;
             }
 
             let component_count = r.read_u32::<BE>()?;
-            // let data_ty = VertexDataType::from_u32(r.read_u32::<BE>()?).unwrap();
-
-            let data_ty = match vertex_ty {
-                VertexArrayType::Position
-                | VertexArrayType::Normal
-                | VertexArrayType::NormalBinormalTangent
-                | VertexArrayType::Tex0MatrixIndex
-                | VertexArrayType::Tex1MatrixIndex
-                | VertexArrayType::Tex2MatrixIndex
-                | VertexArrayType::Tex3MatrixIndex
-                | VertexArrayType::Tex4MatrixIndex
-                | VertexArrayType::Tex5MatrixIndex
-                | VertexArrayType::Tex6MatrixIndex
-                | VertexArrayType::Tex7MatrixIndex
-                | VertexArrayType::PositionMatrixArray
-                | VertexArrayType::PositionMatrixIndex
-                | VertexArrayType::NormalMatrixArray
-                | VertexArrayType::TextureMatrixArray
-                | VertexArrayType::LitMatrixArray => VertexDataType::Scalar(
-                    VertexScalarDataType::from_u32(r.read_u32::<BE>()?).unwrap(),
-                ),
-                VertexArrayType::Color0
-                | VertexArrayType::Color1
-                | VertexArrayType::Tex0
-                | VertexArrayType::Tex1
-                | VertexArrayType::Tex2
-                | VertexArrayType::Tex3
-                | VertexArrayType::Tex4
-                | VertexArrayType::Tex5
-                | VertexArrayType::Tex6
-                | VertexArrayType::Tex7 => VertexDataType::Color(
-                    VertexColorDataType::from_u32(r.read_u32::<BE>()?).unwrap(),
-                ),
-                VertexArrayType::NullAttr => unreachable!(),
-            };
+            let data_ty = ty.parse_data_type(r.read_u32::<BE>()?);
 
             let fixpoint_mantissa_bits = r.read_u8()?;
 
-            let vertex_format = VertexFormat { vertex_ty, data_ty };
-
-            println!("{:#?}", vertex_format);
+            let vertex_format = VertexFormat {
+                ty,
+                data_ty,
+                component_count,
+                fixpoint_mantissa_bits,
+            };
 
             // skip padding
             r.seek(SeekFrom::Current(3))?;
+
+            vertex_formats.push(vertex_format);
         }
 
-        Ok(Vtx1 {})
+        let mut arrays: HashMap<VertexArrayType, VertexArray> = HashMap::new();
+        for vtx_format in vertex_formats {
+            // find the vertex list offset
+            let offset = vertex_data_offsets[vtx_format.ty.data_index().unwrap()];
+
+            r.seek(SeekFrom::Start(section_begin_offset + offset as u64))?;
+            let mut data: Vec<u8> = Vec::new();
+            
+            let data_len = Self::vertex_data_length(&vertex_data_offsets, vtx_format.ty.data_index().unwrap(), section_size);
+
+            r.take(data_len as u64).read_to_end(&mut data)?;
+
+            let array = VertexArray {
+                format: vtx_format,
+                raw_data: data,
+            };
+
+            arrays.insert(vtx_format.ty, array);
+        }
+
+        r.seek(SeekFrom::Start(section_begin_offset + section_size as u64))?;
+
+        Ok(Vtx1 { arrays })
+    }
+
+    fn vertex_data_length(offsets: &[u32], current: usize, section_size: u32) -> u32 {
+        let next = Self::next_data_offset(offsets, current).unwrap_or(section_size);
+        next - offsets[current]
+    }
+
+    fn next_data_offset(offsets: &[u32], k: usize) -> Option<u32> {
+        offsets.iter().cloned().skip(k+1).skip_while(|&x| x == 0).next()
     }
 }
