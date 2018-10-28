@@ -1,10 +1,11 @@
 use byteorder::{ReadBytesExt, BE};
-use crate::error::Error;
-use crate::util::SeekExt;
 use indextree::{Arena, NodeId};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
 use std::io::{Read, Seek, SeekFrom};
+
+use crate::error::Error;
+use crate::util::SeekExt;
 
 #[derive(Debug, FromPrimitive, ToPrimitive)]
 enum GraphStreamTag {

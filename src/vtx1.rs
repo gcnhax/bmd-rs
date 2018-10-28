@@ -1,10 +1,11 @@
 use byteorder::{ReadBytesExt, BE};
-use crate::error::Error;
-use crate::gx::{VertexArrayType, VertexColorDataType, VertexDataType, VertexScalarDataType};
-use crate::util::SeekExt;
 use num_traits::FromPrimitive;
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
+
+use crate::error::Error;
+use crate::gx::{VertexArrayType, VertexColorDataType, VertexDataType, VertexScalarDataType};
+use crate::util::SeekExt;
 
 impl VertexArrayType {
     /// Data tables are stored in a fixed order based on their type; this function returns
@@ -147,8 +148,12 @@ impl Vtx1 {
 
             r.seek(SeekFrom::Start(section_begin_offset + offset as u64))?;
             let mut data: Vec<u8> = Vec::new();
-            
-            let data_len = Self::vertex_data_length(&vertex_data_offsets, vtx_format.ty.data_index().unwrap(), section_size);
+
+            let data_len = Self::vertex_data_length(
+                &vertex_data_offsets,
+                vtx_format.ty.data_index().unwrap(),
+                section_size,
+            );
 
             r.take(data_len as u64).read_to_end(&mut data)?;
 
@@ -171,6 +176,11 @@ impl Vtx1 {
     }
 
     fn next_data_offset(offsets: &[u32], k: usize) -> Option<u32> {
-        offsets.iter().cloned().skip(k+1).skip_while(|&x| x == 0).next()
+        offsets
+            .iter()
+            .cloned()
+            .skip(k + 1)
+            .skip_while(|&x| x == 0)
+            .next()
     }
 }
