@@ -4,18 +4,13 @@
 mod error;
 mod gx;
 mod header;
-mod inf1;
+mod sections;
 mod util;
-mod vtx1;
-mod evp1;
-mod drw1;
-mod jnt1;
-mod shp1;
 
 pub use crate::header::{FileType, Header};
-pub use crate::inf1::Inf1;
-pub use crate::vtx1::Vtx1;
-pub use crate::evp1::Evp1;
-pub use crate::drw1::Drw1;
-pub use crate::jnt1::Jnt1;
-pub use crate::shp1::Shp1;
+pub use crate::sections::inf1::Inf1;
+pub use crate::sections::vtx1::Vtx1;
+pub use crate::sections::evp1::Evp1;
+pub use crate::sections::drw1::Drw1;
+pub use crate::sections::jnt1::Jnt1;
+pub use crate::sections::shp1::Shp1;
