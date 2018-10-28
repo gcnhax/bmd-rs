@@ -2,9 +2,9 @@ use byteorder::{ReadBytesExt, BE};
 use crate::error::Error;
 use crate::util::SeekExt;
 use indextree::{Arena, NodeId};
-use std::io::{Read, Seek, SeekFrom};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
+use std::io::{Read, Seek, SeekFrom};
 
 #[derive(Debug, FromPrimitive, ToPrimitive)]
 enum GraphStreamTag {
@@ -68,7 +68,8 @@ impl Inf1 {
         let mut last_node: Option<NodeId> = None;
         let mut parent_stack: Vec<NodeId> = vec![root];
         loop {
-            let tag = GraphStreamTag::from_u16(r.read_u16::<BE>()?).ok_or(Error::InvalidInfPacket)?;
+            let tag =
+                GraphStreamTag::from_u16(r.read_u16::<BE>()?).ok_or(Error::InvalidInfPacket)?;
             let index = r.read_u16::<BE>()?;
 
             match tag {
